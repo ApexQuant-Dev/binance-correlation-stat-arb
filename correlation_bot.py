@@ -1,16 +1,48 @@
-# 📉 Binance Correlation & Stat-Arb Suite
+import ccxt.async_support as ccxt
+import asyncio
+import numpy as np
 
-This repository contains a professional-grade statistical arbitrage engine designed to exploit mean-reversion opportunities between highly correlated crypto assets.
+class CorrelationEngine:
+    def __init__(self, symbol_a, symbol_b):
+        self.symbol_a = symbol_a
+        self.symbol_b = symbol_b
+        self.exchange = ccxt.binance({'options': {'defaultType': 'future'}})
+        self.lookback = 30 # Chu kỳ tính toán tương quan
 
-## 🧠 The Strategy: Z-Score Arbitrage
-The system monitors the price ratio between two correlated assets (e.g., BTC/ETH). When the ratio deviates significantly from its historical mean (Z-Score > 2 or < -2), it signals a potential mean-reversion trade:
-- **High Z-Score:** Asset A is overpriced relative to Asset B.
-- **Low Z-Score:** Asset A is underpriced relative to Asset B.
+    async def get_spread_series(self):
+        # Lấy dữ liệu lịch sử để tính độ lệch chuẩn
+        ohlcv_a = await self.exchange.fetch_ohlcv(self.symbol_a, timeframe='1m', limit=self.lookback)
+        ohlcv_b = await self.exchange.fetch_ohlcv(self.symbol_b, timeframe='1m', limit=self.lookback)
+        
+        prices_a = np.array([x[4] for x in ohlcv_a])
+        prices_b = np.array([x[4] for x in ohlcv_b])
+        
+        # Tính tỷ lệ (Ratio) giữa 2 cặp
+        ratios = prices_a / prices_b
+        return ratios
 
-## ⚡ Technical Highlights
-- **Asynchronous Execution:** Handles real-time data streams with `asyncio`.
-- **Statistical Modeling:** Uses `NumPy` for moving average and standard deviation calculations.
-- **Production Ready:** Structured for easy integration with execution modules.
+    def calculate_zscore(self, current_ratio, ratio_series):
+        mean = np.mean(ratio_series)
+        std = np.std(ratio_series)
+        z_score = (current_ratio - mean) / std
+        return z_score
 
-## 🛠️ Installation
-`pip install ccxt numpy`
+    async def run(self):
+        print(f"📡 Đang phân tích sự tương quan giữa {self.symbol_a} và {self.symbol_b}...")
+        while True:
+            ratios = await self.get_spread_series()
+            current_ratio = ratios[-1]
+            z = self.calculate_zscore(current_ratio, ratios)
+            
+            print(f"📊 Ratio: {current_ratio:.4f} | Z-Score: {z:.2f}")
+            
+            if z > 2:
+                print("⚠️ ĐỘ LỆCH CAO: Cân nhắc SHORT A và LONG B (Mean Reversion)")
+            elif z < -2:
+                print("⚠️ ĐỘ LỆCH THẤP: Cân nhắc LONG A và SHORT B (Mean Reversion)")
+                
+            await asyncio.sleep(10)
+
+if __name__ == "__main__":
+    bot = CorrelationEngine('ETH/USDT', 'BTC/USDT')
+    asyncio.run(bot.run())
