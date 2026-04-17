@@ -1,3 +1,5 @@
+Official Giveth Verification: This repository is the official open-source codebase for the "Binance Stat-Arb & Correlation Explorer" project on Giveth.io. Support our public goods development here:[https://giveth.io/project/binance-stat-arb-correlation-explorer]
+
 # 📉 Binance Correlation & Stat-Arb Suite
 
 This repository contains a professional-grade statistical arbitrage engine designed to exploit mean-reversion opportunities between highly correlated crypto assets.
